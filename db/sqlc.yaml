@@ -1,0 +1,7 @@
+version: 1
+packages:
+  - path: "generated"
+    name: "db"
+    engine: "mysql"
+    schema: "schema.sql"
+    queries: "queries.sql"

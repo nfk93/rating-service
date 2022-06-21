@@ -1,0 +1,26 @@
+# source folder for generated code (Default: go)
+sourceFolder: generated/api
+
+# The network port the generated server binds to
+serverPort: 8080
+
+# Specify the router which should be used. (mux or chi)
+router: mux
+
+# Go package name (convention: lowercase). (Default: openapi)
+packageName: api
+
+# To include response headers in ImplResponse (Default: false)
+addResponseHeaders: false
+
+# Prefix enum with class name (Default: false)
+enumClassPrefix: false
+
+# Enable Cross-Origin Resource Sharing middleware (Default: false)
+featureCORS: false
+
+# Hides the generation timestamp when files are generated. (Default: true)
+hideGenerationTimestamp: true
+
+# Go package version.
+packageVersion: 1.0.0

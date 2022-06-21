@@ -1,0 +1,13 @@
+Dockerfile
+README.md
+generated/api/api.go
+generated/api/api_default.go
+generated/api/api_default_service.go
+generated/api/error.go
+generated/api/helpers.go
+generated/api/impl.go
+generated/api/logger.go
+generated/api/model_user.go
+generated/api/routers.go
+go.mod
+main.go

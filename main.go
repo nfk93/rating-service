@@ -10,19 +10,32 @@
 package main
 
 import (
+	"database/sql"
 	"log"
 	"net/http"
 
-	api "github.com/nfk93/rating-service/generated/api"
+	"github.com/nfk93/rating-service/db"
+	"github.com/nfk93/rating-service/generated/api"
+	"github.com/nfk93/rating-service/generated/database"
+	"github.com/nfk93/rating-service/internal/endpoints"
+	"github.com/nfk93/rating-service/internal/user"
 )
 
 func main() {
 	log.Printf("Server started")
 
-	DefaultApiService := api.NewDefaultApiService()
+	sqldb, err := sql.Open("mysql", "user:password@/dbname")
+	if err != nil {
+		panic("error creating db")
+	}
+	queries := database.New(sqldb)
+	repo := db.NewRepo(queries)
+
+	userService := user.NewUserService(repo)
+
+	DefaultApiService := endpoints.NewApiService(userService)
 	DefaultApiController := api.NewDefaultApiController(DefaultApiService)
 
 	router := api.NewRouter(DefaultApiController)
-
 	log.Fatal(http.ListenAndServe(":8080", router))
 }

@@ -23,3 +23,6 @@
 #!docs/README.md
 
 api/*
+main.go
+go.mod
+go.sum

@@ -2,6 +2,6 @@ version: 1
 packages:
   - path: "../generated/database"
     name: "database"
-    engine: "mysql"
+    engine: "postgresql"
     schema: "schema.sql"
     queries: "queries.sql"

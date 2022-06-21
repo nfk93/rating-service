@@ -7,15 +7,15 @@ package database
 
 import (
 	"context"
-	"database/sql"
 )
 
-const createUser = `-- name: CreateUser :execresult
+const createUser = `-- name: CreateUser :one
 INSERT INTO users (
   id, name
 ) VALUES (
-  ?, ?
+  $1, $2
 )
+RETURNING id, name
 `
 
 type CreateUserParams struct {
@@ -23,13 +23,16 @@ type CreateUserParams struct {
 	Name string
 }
 
-func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (sql.Result, error) {
-	return q.db.ExecContext(ctx, createUser, arg.ID, arg.Name)
+func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, createUser, arg.ID, arg.Name)
+	var i User
+	err := row.Scan(&i.ID, &i.Name)
+	return i, err
 }
 
 const deleteUser = `-- name: DeleteUser :exec
 DELETE FROM users
-WHERE id = ?
+WHERE id = $1
 `
 
 func (q *Queries) DeleteUser(ctx context.Context, id string) error {
@@ -39,7 +42,7 @@ func (q *Queries) DeleteUser(ctx context.Context, id string) error {
 
 const getUser = `-- name: GetUser :one
 SELECT id, name FROM users
-WHERE id = ? LIMIT 1
+WHERE id = $1 LIMIT 1
 `
 
 func (q *Queries) GetUser(ctx context.Context, id string) (User, error) {

@@ -23,11 +23,15 @@ paths:
                 type: array
                 items: 
                   $ref: '#/components/schemas/User'
+  /users/{username}:
     post:
       description: Create a new user
-      requestBody:
-        $ref: '#/components/requestBodies/PostUserRequest'
-        
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
       responses:
         201:
           description: User successfully created

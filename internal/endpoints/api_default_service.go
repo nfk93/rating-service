@@ -12,40 +12,41 @@ package endpoints
 import (
 	"context"
 	"errors"
-	"net/http"
 
 	"github.com/nfk93/rating-service/generated/api"
+	"github.com/nfk93/rating-service/internal/user"
 )
 
-// DefaultApiService is a service that implements the logic for the DefaultApiServicer
+// ApiService is a service that implements the logic for the ApiServicer
 // This service should implement the business logic for every endpoint for the DefaultApi API.
 // Include any external packages or services that will be required by this service.
-type DefaultApiService struct {
+type ApiService struct {
+	userService *user.UserService
 }
 
-// NewDefaultApiService creates a default api service
-func NewDefaultApiService() api.DefaultApiServicer {
-	return &DefaultApiService{}
+// NewApiService creates a default api service
+func NewApiService(userService *user.UserService) api.DefaultApiServicer {
+	return &ApiService{
+		userService: userService,
+	}
 }
 
 // UsersGet -
-func (s *DefaultApiService) UsersGet(ctx context.Context) (api.ImplResponse, error) {
-	// TODO - update UsersGet with the required logic for this service method.
-	// Add api_default_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation when updating open api generation.
+func (s *ApiService) UsersGet(ctx context.Context) (api.ImplResponse, error) {
+	users, err := s.userService.GetUsers(ctx)
+	if err != nil {
+		return api.Response(500, nil), errors.New("unexpected error when fetching users")
+	}
 
-	//TODO: Uncomment the next line to return response Response(200, []User{}) or use other options such as http.Ok ...
-	//return Response(200, []User{}), nil
-
-	return api.Response(http.StatusNotImplemented, nil), errors.New("UsersGet method not implemented")
+	return api.Response(200, mapUsers(users)), nil
 }
 
 // UsersPost -
-func (s *DefaultApiService) UsersPost(ctx context.Context, user api.User) (api.ImplResponse, error) {
-	// TODO - update UsersPost with the required logic for this service method.
-	// Add api_default_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation when updating open api generation.
+func (s *ApiService) UsersUsernamePost(ctx context.Context, username string) (api.ImplResponse, error) {
+	id, err := s.userService.CreateUser(ctx, username)
+	if err != nil {
+		return api.Response(500, nil), errors.New("unexpected error when adding user")
+	}
 
-	//TODO: Uncomment the next line to return response Response(201, string{}) or use other options such as http.Ok ...
-	//return Response(201, string{}), nil
-
-	return api.Response(http.StatusNotImplemented, nil), errors.New("UsersPost method not implemented")
+	return api.Response(201, id), nil
 }

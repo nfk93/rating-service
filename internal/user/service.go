@@ -1,4 +1,4 @@
-package service
+package user
 
 import (
 	"context"
@@ -8,11 +8,17 @@ import (
 	"github.com/nfk93/rating-service/generated/database"
 )
 
-type Service struct {
+type UserService struct {
 	repo *db.Repo
 }
 
-func (s *Service) CreateUser(ctx context.Context, name string) (string, error) {
+func NewUserService(repo *db.Repo) *UserService {
+	return &UserService{
+		repo: repo,
+	}
+}
+
+func (s *UserService) CreateUser(ctx context.Context, name string) (string, error) {
 	id, err := uuid.NewV4()
 	if err != nil {
 		return "", err
@@ -26,6 +32,6 @@ func (s *Service) CreateUser(ctx context.Context, name string) (string, error) {
 	return id.String(), nil
 }
 
-func (s *Service) GetUsers(ctx context.Context) ([]database.User, error) {
+func (s *UserService) GetUsers(ctx context.Context) ([]database.User, error) {
 	return s.repo.GetUsers(ctx)
 }

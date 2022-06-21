@@ -2,29 +2,19 @@ package db
 
 import (
 	"context"
-	"database/sql"
 
 	"github.com/gofrs/uuid"
 	"github.com/nfk93/rating-service/generated/database"
 )
 
 type Repo struct {
-	db      *sql.DB
 	queries *database.Queries
 }
 
-func NewRepo() (*Repo, error) {
-	db, err := sql.Open("mysql", "user:password@/dbname")
-	if err != nil {
-		return nil, err
-	}
-
-	queries := database.New(db)
-
+func NewRepo(queries *database.Queries) *Repo {
 	return &Repo{
-		db:      db,
 		queries: queries,
-	}, nil
+	}
 }
 
 func (r *Repo) CreateUser(ctx context.Context, id uuid.UUID, name string) error {

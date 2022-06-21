@@ -13,14 +13,13 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/nfk93/rating-service/generated/api"
-	"github.com/nfk93/rating-service/internal/endpoints"
+	api "github.com/nfk93/rating-service/generated/api"
 )
 
 func main() {
 	log.Printf("Server started")
 
-	DefaultApiService := endpoints.NewDefaultApiService()
+	DefaultApiService := api.NewDefaultApiService()
 	DefaultApiController := api.NewDefaultApiController(DefaultApiService)
 
 	router := api.NewRouter(DefaultApiController)

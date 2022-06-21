@@ -10,9 +10,10 @@
 package api
 
 import (
-	"encoding/json"
 	"net/http"
 	"strings"
+
+	"github.com/gorilla/mux"
 )
 
 // DefaultApiController binds http requests to an api service and writes the service results to the http response
@@ -55,10 +56,10 @@ func (c *DefaultApiController) Routes() Routes {
 			c.UsersGet,
 		},
 		{
-			"UsersPost",
+			"UsersUsernamePost",
 			strings.ToUpper("Post"),
-			"/v1/users",
-			c.UsersPost,
+			"/v1/users/{username}",
+			c.UsersUsernamePost,
 		},
 	}
 }
@@ -76,20 +77,12 @@ func (c *DefaultApiController) UsersGet(w http.ResponseWriter, r *http.Request) 
 
 }
 
-// UsersPost -
-func (c *DefaultApiController) UsersPost(w http.ResponseWriter, r *http.Request) {
-	userParam := User{}
-	d := json.NewDecoder(r.Body)
-	d.DisallowUnknownFields()
-	if err := d.Decode(&userParam); err != nil {
-		c.errorHandler(w, r, &ParsingError{Err: err}, nil)
-		return
-	}
-	if err := AssertUserRequired(userParam); err != nil {
-		c.errorHandler(w, r, err, nil)
-		return
-	}
-	result, err := c.service.UsersPost(r.Context(), userParam)
+// UsersUsernamePost -
+func (c *DefaultApiController) UsersUsernamePost(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	usernameParam := params["username"]
+
+	result, err := c.service.UsersUsernamePost(r.Context(), usernameParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
 		c.errorHandler(w, r, err, &result)

@@ -21,7 +21,7 @@ import (
 // pass the data to a DefaultApiServicer to perform the required actions, then write the service results to the http response.
 type DefaultApiRouter interface { 
 	UsersGet(http.ResponseWriter, *http.Request)
-	UsersPost(http.ResponseWriter, *http.Request)
+	UsersUsernamePost(http.ResponseWriter, *http.Request)
 }
 
 
@@ -31,5 +31,5 @@ type DefaultApiRouter interface {
 // and updated with the logic required for the API.
 type DefaultApiServicer interface { 
 	UsersGet(context.Context) (ImplResponse, error)
-	UsersPost(context.Context, User) (ImplResponse, error)
+	UsersUsernamePost(context.Context, string) (ImplResponse, error)
 }

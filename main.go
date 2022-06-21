@@ -19,6 +19,8 @@ import (
 	"github.com/nfk93/rating-service/generated/database"
 	"github.com/nfk93/rating-service/internal/endpoints"
 	"github.com/nfk93/rating-service/internal/user"
+
+	_ "github.com/go-sql-driver/mysql"
 )
 
 func main() {

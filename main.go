@@ -16,7 +16,6 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/joho/godotenv"
 	"github.com/nfk93/rating-service/db"
 	"github.com/nfk93/rating-service/generated/api"
 	"github.com/nfk93/rating-service/generated/database"
@@ -27,14 +26,6 @@ import (
 )
 
 func main() {
-
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatalf("Error getting env, %v", err)
-	} else {
-		fmt.Println("We are getting the env values")
-	}
-
 	dbhost := os.Getenv("DB_HOST")
 	dbuser := os.Getenv("DB_USER")
 	dbpw := os.Getenv("DB_PASSWORD")

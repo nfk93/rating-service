@@ -28,20 +28,6 @@ services:
       - database_postgres:/var/lib/postgresql/data
     networks:
       - rating_service
-    
-  pgadmin:
-    image: dpage/pgadmin4
-    container_name: pgadmin_container
-    environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
-    depends_on:
-      - rating_service_pgdb
-    ports:
-      - "5050:80"
-    networks:
-      - rating_service
-    restart: unless-stopped
 
 volumes:
   api:

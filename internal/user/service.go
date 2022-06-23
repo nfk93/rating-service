@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"log"
 
 	"github.com/gofrs/uuid"
 	"github.com/nfk93/rating-service/db"
@@ -21,11 +22,13 @@ func NewUserService(repo *db.Repo) *UserService {
 func (s *UserService) CreateUser(ctx context.Context, name string) (string, error) {
 	id, err := uuid.NewV4()
 	if err != nil {
+		log.Printf("error: %s", err.Error())
 		return "", err
 	}
 
 	err = s.repo.CreateUser(ctx, id, name)
 	if err != nil {
+		log.Printf("error: %s", err.Error())
 		return "", err
 	}
 
@@ -33,5 +36,11 @@ func (s *UserService) CreateUser(ctx context.Context, name string) (string, erro
 }
 
 func (s *UserService) GetUsers(ctx context.Context) ([]database.User, error) {
-	return s.repo.GetUsers(ctx)
+	users, err := s.repo.GetUsers(ctx)
+	if err != nil {
+		log.Printf("error: %s", err.Error())
+		return nil, err
+	}
+
+	return users, nil
 }

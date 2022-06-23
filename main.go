@@ -11,24 +11,40 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"net/http"
+	"os"
 
+	"github.com/joho/godotenv"
 	"github.com/nfk93/rating-service/db"
 	"github.com/nfk93/rating-service/generated/api"
 	"github.com/nfk93/rating-service/generated/database"
 	"github.com/nfk93/rating-service/internal/endpoints"
 	"github.com/nfk93/rating-service/internal/user"
 
-	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/lib/pq"
 )
 
 func main() {
-	log.Printf("Server started")
 
-	sqldb, err := sql.Open("mysql", "user:password@/dbname")
+	err := godotenv.Load()
 	if err != nil {
-		panic("error creating db")
+		log.Fatalf("Error getting env, %v", err)
+	} else {
+		fmt.Println("We are getting the env values")
+	}
+
+	dbhost := os.Getenv("DB_HOST")
+	dbuser := os.Getenv("DB_USER")
+	dbpw := os.Getenv("DB_PASSWORD")
+	dbport := os.Getenv("DB_PORT")
+	dbname := os.Getenv("DB_NAME")
+	psqlconn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", dbhost, dbport, dbuser, dbpw, dbname)
+
+	sqldb, err := sql.Open("postgres", psqlconn)
+	if err != nil {
+		panic(fmt.Sprintf("error creating db: %s", err))
 	}
 	queries := database.New(sqldb)
 	repo := db.NewRepo(queries)
@@ -37,6 +53,8 @@ func main() {
 
 	DefaultApiService := endpoints.NewApiService(userService)
 	DefaultApiController := api.NewDefaultApiController(DefaultApiService)
+
+	fmt.Println("Serving on 8080")
 
 	router := api.NewRouter(DefaultApiController)
 	log.Fatal(http.ListenAndServe(":8080", router))

@@ -50,18 +50,37 @@ func NewDefaultApiController(s DefaultApiServicer, opts ...DefaultApiOption) Rou
 func (c *DefaultApiController) Routes() Routes {
 	return Routes{
 		{
+			"RootGet",
+			strings.ToUpper("Get"),
+			"/",
+			c.RootGet,
+		},
+		{
 			"UsersGet",
 			strings.ToUpper("Get"),
-			"/v1/users",
+			"/users",
 			c.UsersGet,
 		},
 		{
 			"UsersUsernamePost",
 			strings.ToUpper("Post"),
-			"/v1/users/{username}",
+			"/users/{username}",
 			c.UsersUsernamePost,
 		},
 	}
+}
+
+// RootGet -
+func (c *DefaultApiController) RootGet(w http.ResponseWriter, r *http.Request) {
+	result, err := c.service.RootGet(r.Context())
+	// If an error occurred, encode the error with the status code
+	if err != nil {
+		c.errorHandler(w, r, err, &result)
+		return
+	}
+	// If no error, encode the body and the result code
+	EncodeJSONResponse(result.Body, &result.Code, w)
+
 }
 
 // UsersGet -

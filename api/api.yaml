@@ -4,13 +4,24 @@ info:
   description: Optional multiline or single-line description in [CommonMark](http://commonmark.org/help/) or HTML.
   version: 0.0.0
 
-servers:
-  - url: http://api.example.com/v1
-    description: Optional server description, e.g. Main (production) server
-  - url: http://staging-api.example.com
-    description: Optional server description, e.g. Internal staging server for testing
+# servers:
+#   - url: http://api.example.com/v1
+#     description: Optional server description, e.g. Main (production) server
+#   - url: http://staging-api.example.com
+#     description: Optional server description, e.g. Internal staging server for testing
 
 paths:
+  /:
+    get:
+      description: Hello world
+      responses:
+        200:
+          description: Hello world
+          content:
+            application/json:
+              schema:
+                type: string
+                
   /users:
     get:
       description: Optional extended description in CommonMark or HTML.
@@ -23,6 +34,7 @@ paths:
                 type: array
                 items: 
                   $ref: '#/components/schemas/User'
+                  
   /users/{username}:
     post:
       description: Create a new user

@@ -26,3 +26,4 @@ api/*
 main.go
 go.mod
 go.sum
+Dockerfile

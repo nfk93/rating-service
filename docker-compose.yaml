@@ -15,8 +15,8 @@ services:
 
 
   rating_service_pgdb:
-    image: postgres:latest
-    container_name: rating_service_pgdb
+    container_name: database_postgres
+    build: db/.
     environment:
       - POSTGRES_USER=${DB_USER}  
       - POSTGRES_PASSWORD=${DB_PASSWORD}

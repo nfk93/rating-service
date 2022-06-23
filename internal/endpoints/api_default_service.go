@@ -12,6 +12,7 @@ package endpoints
 import (
 	"context"
 	"errors"
+	"net/http"
 
 	"github.com/nfk93/rating-service/generated/api"
 	"github.com/nfk93/rating-service/internal/user"
@@ -29,6 +30,11 @@ func NewApiService(userService *user.UserService) api.DefaultApiServicer {
 	return &ApiService{
 		userService: userService,
 	}
+}
+
+// RootGet -
+func (s *ApiService) RootGet(ctx context.Context) (api.ImplResponse, error) {
+	return api.Response(http.StatusOK, "Hello, world"), nil
 }
 
 // UsersGet -

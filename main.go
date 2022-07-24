@@ -10,12 +10,15 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/feature/rds/auth"
 	"github.com/nfk93/rating-service/db"
 	"github.com/nfk93/rating-service/generated/api"
 	"github.com/nfk93/rating-service/generated/database"
@@ -26,17 +29,38 @@ import (
 )
 
 func main() {
-	dbhost := os.Getenv("DB_HOST")
-	dbuser := os.Getenv("DB_USER")
-	dbpw := os.Getenv("DB_PASSWORD")
-	dbport := os.Getenv("DB_PORT")
-	dbname := os.Getenv("DB_NAME")
-	psqlconn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", dbhost, dbport, dbuser, dbpw, dbname)
+	dbHost := os.Getenv("DB_HOST")
+	dbPort := os.Getenv("DB_PORT")
+	dbUser := os.Getenv("DB_USER")
+	dbName := os.Getenv("DB_NAME")
+	dbEndpoint := fmt.Sprintf("%s:%s", dbHost, dbPort)
+	region := "us-east-1"
+
+	cfg, err := config.LoadDefaultConfig(context.TODO())
+	if err != nil {
+		panic("configuration error: " + err.Error())
+	}
+
+	authenticationToken, err := auth.BuildAuthToken(
+		context.TODO(),
+		dbEndpoint,
+		region, // AWS Region
+		dbUser, // Database Account
+		cfg.Credentials,
+	)
+	if err != nil {
+		panic("failed to create authentication token: " + err.Error())
+	}
+
+	psqlconn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s",
+		dbHost, dbPort, dbUser, authenticationToken, dbName,
+	)
 
 	sqldb, err := sql.Open("postgres", psqlconn)
 	if err != nil {
-		panic(fmt.Sprintf("error creating db: %s", err))
+		panic(fmt.Sprintf("error opening db connection: %s", err))
 	}
+
 	queries := database.New(sqldb)
 	repo := db.NewRepo(queries)
 
@@ -44,8 +68,6 @@ func main() {
 
 	DefaultApiService := endpoints.NewApiService(userService)
 	DefaultApiController := api.NewDefaultApiController(DefaultApiService)
-
-	fmt.Println("Serving on 8080")
 
 	router := api.NewRouter(DefaultApiController)
 	log.Fatal(http.ListenAndServe(":8080", router))

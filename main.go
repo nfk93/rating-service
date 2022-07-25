@@ -10,15 +10,12 @@
 package main
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/feature/rds/auth"
 	"github.com/nfk93/rating-service/db"
 	"github.com/nfk93/rating-service/generated/api"
 	"github.com/nfk93/rating-service/generated/database"
@@ -29,34 +26,25 @@ import (
 )
 
 func main() {
-	dbHost := os.Getenv("DB_HOST")
-	dbPort := os.Getenv("DB_PORT")
-	dbUser := os.Getenv("DB_USER")
-	dbName := os.Getenv("DB_NAME")
-	dbEndpoint := fmt.Sprintf("%s:%s", dbHost, dbPort)
-	region := "us-east-1"
-
-	cfg, err := config.LoadDefaultConfig(context.TODO())
-	if err != nil {
-		panic("configuration error: " + err.Error())
+	mustGetenv := func(k string) string {
+		v := os.Getenv(k)
+		if v == "" {
+			log.Fatalf("Warning: %s environment variable not set.\n", k)
+		}
+		return v
 	}
 
-	authenticationToken, err := auth.BuildAuthToken(
-		context.TODO(),
-		dbEndpoint,
-		region, // AWS Region
-		dbUser, // Database Account
-		cfg.Credentials,
-	)
-	if err != nil {
-		panic("failed to create authentication token: " + err.Error())
-	}
-
-	psqlconn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s",
-		dbHost, dbPort, dbUser, authenticationToken, dbName,
+	var (
+		dbUser         = mustGetenv("DB_USER")              // e.g. 'my-db-user'
+		dbPwd          = mustGetenv("DB_PASS")              // e.g. 'my-db-password'
+		unixSocketPath = mustGetenv("INSTANCE_UNIX_SOCKET") // e.g. '/cloudsql/project:region:instance'
+		dbName         = mustGetenv("DB_NAME")              // e.g. 'my-database'
 	)
 
-	sqldb, err := sql.Open("postgres", psqlconn)
+	dbURI := fmt.Sprintf("user=%s password=%s database=%s host=%s",
+		dbUser, dbPwd, dbName, unixSocketPath)
+
+	sqldb, err := sql.Open("postgres", dbURI)
 	if err != nil {
 		panic(fmt.Sprintf("error opening db connection: %s", err))
 	}

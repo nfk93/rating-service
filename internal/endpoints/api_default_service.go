@@ -15,7 +15,7 @@ import (
 	"net/http"
 
 	"github.com/nfk93/rating-service/generated/api"
-	"github.com/nfk93/rating-service/internal/user"
+	"github.com/nfk93/rating-service/internal/logic/user"
 )
 
 // ApiService is a service that implements the logic for the ApiServicer

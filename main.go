@@ -20,7 +20,7 @@ import (
 	"github.com/nfk93/rating-service/generated/api"
 	"github.com/nfk93/rating-service/generated/database"
 	"github.com/nfk93/rating-service/internal/endpoints"
-	"github.com/nfk93/rating-service/internal/user"
+	"github.com/nfk93/rating-service/internal/logic/user"
 
 	_ "github.com/lib/pq"
 )

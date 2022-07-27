@@ -1,5 +1,5 @@
 openapi-generator generate \
-	-c ../api/openapi-generator-config.yaml \
+	-c openapi-generator-config.yaml \
 	-i ../api/api.yaml \
 	-g go-server \
 	--invoker-package todolist \

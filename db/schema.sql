@@ -22,6 +22,15 @@ CREATE TABLE glicko_rating (
   PRIMARY KEY(user_id, game_id)
 );
 
+CREATE TABLE elo_rating (
+  user_id uuid references users(id),
+  game_id uuid references users(id),
+
+  rating int NOT NULL,
+
+  PRIMARY KEY(user_id, game_id)
+);
+
 CREATE TABLE matches (
   id uuid NOT NULL PRIMARY KEY,
   game_id uuid references games(id),

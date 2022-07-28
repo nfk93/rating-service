@@ -31,6 +31,12 @@ func (e *RatingSystemEnum) Scan(src interface{}) error {
 	return nil
 }
 
+type EloRating struct {
+	UserID uuid.UUID
+	GameID uuid.UUID
+	Rating int32
+}
+
 type Game struct {
 	ID           uuid.UUID
 	Name         string

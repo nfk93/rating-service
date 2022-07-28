@@ -4,7 +4,7 @@ import (
 	"context"
 	"log"
 
-	"github.com/gofrs/uuid"
+	"github.com/google/uuid"
 	"github.com/nfk93/rating-service/db"
 	"github.com/nfk93/rating-service/generated/database"
 )
@@ -20,7 +20,7 @@ func NewUserService(repo *db.Repo) *UserService {
 }
 
 func (s *UserService) CreateUser(ctx context.Context, name string) (string, error) {
-	id, err := uuid.NewV4()
+	id, err := uuid.NewUUID()
 	if err != nil {
 		log.Printf("error: %s", err.Error())
 		return "", err

@@ -7,7 +7,44 @@ package database
 
 import (
 	"context"
+	"database/sql"
+	"time"
+
+	"github.com/google/uuid"
 )
+
+const addPlayerToMatch = `-- name: AddPlayerToMatch :one
+INSERT INTO match_player (
+  match_id, user_id, is_winner, score
+) VALUES (
+  $1, $2, $3, $4
+)
+RETURNING match_id, user_id, is_winner, score
+`
+
+type AddPlayerToMatchParams struct {
+	MatchID  uuid.UUID
+	UserID   uuid.UUID
+	IsWinner bool
+	Score    sql.NullInt32
+}
+
+func (q *Queries) AddPlayerToMatch(ctx context.Context, arg AddPlayerToMatchParams) (MatchPlayer, error) {
+	row := q.db.QueryRowContext(ctx, addPlayerToMatch,
+		arg.MatchID,
+		arg.UserID,
+		arg.IsWinner,
+		arg.Score,
+	)
+	var i MatchPlayer
+	err := row.Scan(
+		&i.MatchID,
+		&i.UserID,
+		&i.IsWinner,
+		&i.Score,
+	)
+	return i, err
+}
 
 const createGame = `-- name: CreateGame :one
 
@@ -16,21 +53,47 @@ INSERT INTO games (
 ) VALUES (
   $1, $2
 )
-RETURNING id, name
+RETURNING id, name, rating_system
 `
 
 type CreateGameParams struct {
-	ID   string
+	ID   uuid.UUID
 	Name string
 }
 
-// ############
-// # Ratings
-// ############
+// ########################################
+// # GAMES
+// ########################################
 func (q *Queries) CreateGame(ctx context.Context, arg CreateGameParams) (Game, error) {
 	row := q.db.QueryRowContext(ctx, createGame, arg.ID, arg.Name)
 	var i Game
-	err := row.Scan(&i.ID, &i.Name)
+	err := row.Scan(&i.ID, &i.Name, &i.RatingSystem)
+	return i, err
+}
+
+const createMatch = `-- name: CreateMatch :one
+
+INSERT INTO matches (
+  id, game_id, happened_at
+) VALUES (
+  $1, $2, $3
+)
+RETURNING id, game_id, happened_at
+`
+
+type CreateMatchParams struct {
+	ID         uuid.UUID
+	GameID     uuid.NullUUID
+	HappenedAt time.Time
+}
+
+// ########################################
+// # MATCHES
+// ########################################
+func (q *Queries) CreateMatch(ctx context.Context, arg CreateMatchParams) (Match, error) {
+	row := q.db.QueryRowContext(ctx, createMatch, arg.ID, arg.GameID, arg.HappenedAt)
+	var i Match
+	err := row.Scan(&i.ID, &i.GameID, &i.HappenedAt)
 	return i, err
 }
 
@@ -44,7 +107,7 @@ RETURNING id, name
 `
 
 type CreateUserParams struct {
-	ID   string
+	ID   uuid.UUID
 	Name string
 }
 
@@ -60,7 +123,7 @@ DELETE FROM games
 WHERE id = $1
 `
 
-func (q *Queries) DeleteGame(ctx context.Context, id string) error {
+func (q *Queries) DeleteGame(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.ExecContext(ctx, deleteGame, id)
 	return err
 }
@@ -70,32 +133,101 @@ DELETE FROM users
 WHERE id = $1
 `
 
-func (q *Queries) DeleteUser(ctx context.Context, id string) error {
+func (q *Queries) DeleteUser(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.ExecContext(ctx, deleteUser, id)
 	return err
 }
 
-const getRating = `-- name: GetRating :one
+const getGlickoMatchesAfter = `-- name: GetGlickoMatchesAfter :many
+SELECT A.match_id as match_id, A.user_id, A.is_winner, A.score, B.current_rating, B.glicko_rating, B.glicko_deviation
+FROM (
+  SELECT match_id, user_id, is_winner, score 
+  FROM match_player
+  WHERE match_id IN 
+  (
+    SELECT matches.id
+    FROM match_player INNER JOIN matches ON match_player.match_id = matches.id
+    WHERE match_player.user_id = $1 AND matches.game_id = $2 AND matches.happened_at >= $3
+  )
+) AS A
+INNER JOIN glicko_rating AS B ON A.user_id = B.user_id
+GROUP BY A.match_id
+`
 
-SELECT user_id, game_id, rating FROM ratings
+type GetGlickoMatchesAfterParams struct {
+	UserID     uuid.UUID
+	GameID     uuid.NullUUID
+	HappenedAt time.Time
+}
+
+type GetGlickoMatchesAfterRow struct {
+	MatchID         uuid.UUID
+	UserID          uuid.UUID
+	IsWinner        bool
+	Score           sql.NullInt32
+	CurrentRating   sql.NullInt32
+	GlickoRating    sql.NullInt32
+	GlickoDeviation sql.NullFloat64
+}
+
+func (q *Queries) GetGlickoMatchesAfter(ctx context.Context, arg GetGlickoMatchesAfterParams) ([]GetGlickoMatchesAfterRow, error) {
+	rows, err := q.db.QueryContext(ctx, getGlickoMatchesAfter, arg.UserID, arg.GameID, arg.HappenedAt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetGlickoMatchesAfterRow
+	for rows.Next() {
+		var i GetGlickoMatchesAfterRow
+		if err := rows.Scan(
+			&i.MatchID,
+			&i.UserID,
+			&i.IsWinner,
+			&i.Score,
+			&i.CurrentRating,
+			&i.GlickoRating,
+			&i.GlickoDeviation,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getGlickoRating = `-- name: GetGlickoRating :one
+
+SELECT user_id, game_id, current_rating, glicko_rating, glicko_deviation FROM glicko_rating
 WHERE 
   user_id = $1 AND 
   game_id = $2
 LIMIT 1
 `
 
-type GetRatingParams struct {
-	Userid string
-	Gameid string
+type GetGlickoRatingParams struct {
+	Userid uuid.UUID
+	Gameid uuid.UUID
 }
 
-// ############
-// # Games
-// ############
-func (q *Queries) GetRating(ctx context.Context, arg GetRatingParams) (Rating, error) {
-	row := q.db.QueryRowContext(ctx, getRating, arg.Userid, arg.Gameid)
-	var i Rating
-	err := row.Scan(&i.UserID, &i.GameID, &i.Rating)
+// ########################################
+// # GLICKO RATING
+// ########################################
+func (q *Queries) GetGlickoRating(ctx context.Context, arg GetGlickoRatingParams) (GlickoRating, error) {
+	row := q.db.QueryRowContext(ctx, getGlickoRating, arg.Userid, arg.Gameid)
+	var i GlickoRating
+	err := row.Scan(
+		&i.UserID,
+		&i.GameID,
+		&i.CurrentRating,
+		&i.GlickoRating,
+		&i.GlickoDeviation,
+	)
 	return i, err
 }
 
@@ -105,10 +237,10 @@ SELECT id, name FROM users
 WHERE id = $1 LIMIT 1
 `
 
-// ############
+// ########################################
 // # Users
-// ############
-func (q *Queries) GetUser(ctx context.Context, id string) (User, error) {
+// ########################################
+func (q *Queries) GetUser(ctx context.Context, id uuid.UUID) (User, error) {
 	row := q.db.QueryRowContext(ctx, getUser, id)
 	var i User
 	err := row.Scan(&i.ID, &i.Name)
@@ -142,23 +274,52 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 	return items, nil
 }
 
-const upsertRating = `-- name: UpsertRating :exec
-INSERT INTO ratings (
-  user_id, game_id, rating
+const upsertCurrentGlickoRating = `-- name: UpsertCurrentGlickoRating :exec
+INSERT INTO glicko_rating (
+  user_id, game_id, current_rating
 ) VALUES (
   $1, $2, $3
 )
-ON CONFLICT ON CONSTRAINT ratings_pkey DO 
+ON CONFLICT DO 
 UPDATE SET rating = $3
 `
 
-type UpsertRatingParams struct {
-	UserID string
-	GameID string
-	Rating int32
+type UpsertCurrentGlickoRatingParams struct {
+	UserID        uuid.UUID
+	GameID        uuid.UUID
+	CurrentRating sql.NullInt32
 }
 
-func (q *Queries) UpsertRating(ctx context.Context, arg UpsertRatingParams) error {
-	_, err := q.db.ExecContext(ctx, upsertRating, arg.UserID, arg.GameID, arg.Rating)
+func (q *Queries) UpsertCurrentGlickoRating(ctx context.Context, arg UpsertCurrentGlickoRatingParams) error {
+	_, err := q.db.ExecContext(ctx, upsertCurrentGlickoRating, arg.UserID, arg.GameID, arg.CurrentRating)
+	return err
+}
+
+const upsertFullGlickoRating = `-- name: UpsertFullGlickoRating :exec
+INSERT INTO glicko_rating (
+  user_id, game_id, current_rating, glicko_rating, glicko_deviation
+) VALUES (
+  $1, $2, $3, $4, $5
+)
+ON CONFLICT DO 
+UPDATE SET current_rating = $3, glicko_rating = $4, glicko_deviation = $5
+`
+
+type UpsertFullGlickoRatingParams struct {
+	UserID          uuid.UUID
+	GameID          uuid.UUID
+	CurrentRating   sql.NullInt32
+	GlickoRating    sql.NullInt32
+	GlickoDeviation sql.NullFloat64
+}
+
+func (q *Queries) UpsertFullGlickoRating(ctx context.Context, arg UpsertFullGlickoRatingParams) error {
+	_, err := q.db.ExecContext(ctx, upsertFullGlickoRating,
+		arg.UserID,
+		arg.GameID,
+		arg.CurrentRating,
+		arg.GlickoRating,
+		arg.GlickoDeviation,
+	)
 	return err
 }

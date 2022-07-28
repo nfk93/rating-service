@@ -15,7 +15,7 @@ func mapUsers(users []database.User) []api.User {
 
 func mapUser(user database.User) api.User {
 	return api.User{
-		Id:   user.ID,
+		Id:   user.ID.String(),
 		Name: user.Name,
 	}
 }

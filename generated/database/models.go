@@ -4,20 +4,61 @@
 
 package database
 
-import ()
+import (
+	"database/sql"
+	"fmt"
+	"time"
 
-type Game struct {
-	ID   string
-	Name string
+	"github.com/google/uuid"
+)
+
+type RatingSystemEnum string
+
+const (
+	RatingSystemEnumGlicko RatingSystemEnum = "glicko"
+	RatingSystemEnumElo    RatingSystemEnum = "elo"
+)
+
+func (e *RatingSystemEnum) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = RatingSystemEnum(s)
+	case string:
+		*e = RatingSystemEnum(s)
+	default:
+		return fmt.Errorf("unsupported scan type for RatingSystemEnum: %T", src)
+	}
+	return nil
 }
 
-type Rating struct {
-	UserID string
-	GameID string
-	Rating int32
+type Game struct {
+	ID           uuid.UUID
+	Name         string
+	RatingSystem RatingSystemEnum
+}
+
+type GlickoRating struct {
+	UserID          uuid.UUID
+	GameID          uuid.UUID
+	CurrentRating   sql.NullInt32
+	GlickoRating    sql.NullInt32
+	GlickoDeviation sql.NullFloat64
+}
+
+type Match struct {
+	ID         uuid.UUID
+	GameID     uuid.NullUUID
+	HappenedAt time.Time
+}
+
+type MatchPlayer struct {
+	MatchID  uuid.UUID
+	UserID   uuid.UUID
+	IsWinner bool
+	Score    sql.NullInt32
 }
 
 type User struct {
-	ID   string
+	ID   uuid.UUID
 	Name string
 }

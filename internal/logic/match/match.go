@@ -47,6 +47,7 @@ func (s *MatchService) RegisterMatchResult(ctx context.Context, matchID uuid.UUI
 			MatchID:  matchID,
 			UserID:   playerID,
 			IsWinner: playerID == winnerID,
+			// TODO: Set current rating
 		})
 		if err != nil {
 			return err

@@ -50,7 +50,7 @@ func main() {
 	}
 
 	queries := database.New(sqldb)
-	repo := db.NewRepo(queries)
+	repo := db.NewRepo(queries, sqldb)
 
 	userService := user.NewUserService(repo)
 

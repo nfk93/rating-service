@@ -11,17 +11,6 @@ CREATE TABLE games (
   rating_system rating_system_enum
 );
 
-CREATE TABLE glicko_rating (
-  user_id uuid references users(id),
-  game_id uuid references games(id),
-  
-  current_rating int,
-  glicko_rating int,
-  glicko_deviation real,
-
-  PRIMARY KEY(user_id, game_id)
-);
-
 CREATE TABLE elo_rating (
   user_id uuid references users(id),
   game_id uuid references users(id),

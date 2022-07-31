@@ -43,14 +43,6 @@ type Game struct {
 	RatingSystem RatingSystemEnum
 }
 
-type GlickoRating struct {
-	UserID          uuid.UUID
-	GameID          uuid.UUID
-	CurrentRating   sql.NullInt32
-	GlickoRating    sql.NullInt32
-	GlickoDeviation sql.NullFloat64
-}
-
 type Match struct {
 	ID         uuid.UUID
 	GameID     uuid.NullUUID

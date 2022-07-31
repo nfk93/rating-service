@@ -207,99 +207,6 @@ func (q *Queries) GetEloRating(ctx context.Context, arg GetEloRatingParams) (int
 	return rating, err
 }
 
-const getGlickoMatchesAfter = `-- name: GetGlickoMatchesAfter :many
-SELECT A.match_id as match_id, A.user_id, A.is_winner, A.score, B.current_rating, B.glicko_rating, B.glicko_deviation
-FROM (
-  SELECT match_id, user_id, is_winner, score 
-  FROM match_player
-  WHERE match_id IN 
-  (
-    SELECT matches.id
-    FROM match_player INNER JOIN matches ON match_player.match_id = matches.id
-    WHERE match_player.user_id = $1 AND matches.game_id = $2 AND matches.happened_at >= $3
-  )
-) AS A
-INNER JOIN glicko_rating AS B ON A.user_id = B.user_id
-GROUP BY A.match_id
-`
-
-type GetGlickoMatchesAfterParams struct {
-	UserID     uuid.UUID
-	GameID     uuid.NullUUID
-	HappenedAt time.Time
-}
-
-type GetGlickoMatchesAfterRow struct {
-	MatchID         uuid.UUID
-	UserID          uuid.UUID
-	IsWinner        bool
-	Score           sql.NullInt32
-	CurrentRating   sql.NullInt32
-	GlickoRating    sql.NullInt32
-	GlickoDeviation sql.NullFloat64
-}
-
-func (q *Queries) GetGlickoMatchesAfter(ctx context.Context, arg GetGlickoMatchesAfterParams) ([]GetGlickoMatchesAfterRow, error) {
-	rows, err := q.db.QueryContext(ctx, getGlickoMatchesAfter, arg.UserID, arg.GameID, arg.HappenedAt)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []GetGlickoMatchesAfterRow
-	for rows.Next() {
-		var i GetGlickoMatchesAfterRow
-		if err := rows.Scan(
-			&i.MatchID,
-			&i.UserID,
-			&i.IsWinner,
-			&i.Score,
-			&i.CurrentRating,
-			&i.GlickoRating,
-			&i.GlickoDeviation,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const getGlickoRating = `-- name: GetGlickoRating :one
-
-SELECT user_id, game_id, current_rating, glicko_rating, glicko_deviation FROM glicko_rating
-WHERE 
-  user_id = $1 AND 
-  game_id = $2
-LIMIT 1
-`
-
-type GetGlickoRatingParams struct {
-	Userid uuid.UUID
-	Gameid uuid.UUID
-}
-
-// ########################################
-// # GLICKO RATING
-// ########################################
-func (q *Queries) GetGlickoRating(ctx context.Context, arg GetGlickoRatingParams) (GlickoRating, error) {
-	row := q.db.QueryRowContext(ctx, getGlickoRating, arg.Userid, arg.Gameid)
-	var i GlickoRating
-	err := row.Scan(
-		&i.UserID,
-		&i.GameID,
-		&i.CurrentRating,
-		&i.GlickoRating,
-		&i.GlickoDeviation,
-	)
-	return i, err
-}
-
 const getMatches = `-- name: GetMatches :many
 SELECT A.id 
 FROM (
@@ -381,27 +288,6 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 	return items, nil
 }
 
-const upsertCurrentGlickoRating = `-- name: UpsertCurrentGlickoRating :exec
-INSERT INTO glicko_rating (
-  user_id, game_id, current_rating
-) VALUES (
-  $1, $2, $3
-)
-ON CONFLICT DO 
-UPDATE SET current_rating = $3
-`
-
-type UpsertCurrentGlickoRatingParams struct {
-	UserID        uuid.UUID
-	GameID        uuid.UUID
-	CurrentRating sql.NullInt32
-}
-
-func (q *Queries) UpsertCurrentGlickoRating(ctx context.Context, arg UpsertCurrentGlickoRatingParams) error {
-	_, err := q.db.ExecContext(ctx, upsertCurrentGlickoRating, arg.UserID, arg.GameID, arg.CurrentRating)
-	return err
-}
-
 const upsertEloRating = `-- name: UpsertEloRating :exec
 INSERT INTO elo_rating (
   user_id, game_id, rating
@@ -420,34 +306,5 @@ type UpsertEloRatingParams struct {
 
 func (q *Queries) UpsertEloRating(ctx context.Context, arg UpsertEloRatingParams) error {
 	_, err := q.db.ExecContext(ctx, upsertEloRating, arg.UserID, arg.GameID, arg.Rating)
-	return err
-}
-
-const upsertFullGlickoRating = `-- name: UpsertFullGlickoRating :exec
-INSERT INTO glicko_rating (
-  user_id, game_id, current_rating, glicko_rating, glicko_deviation
-) VALUES (
-  $1, $2, $3, $4, $5
-)
-ON CONFLICT DO 
-UPDATE SET current_rating = $3, glicko_rating = $4, glicko_deviation = $5
-`
-
-type UpsertFullGlickoRatingParams struct {
-	UserID          uuid.UUID
-	GameID          uuid.UUID
-	CurrentRating   sql.NullInt32
-	GlickoRating    sql.NullInt32
-	GlickoDeviation sql.NullFloat64
-}
-
-func (q *Queries) UpsertFullGlickoRating(ctx context.Context, arg UpsertFullGlickoRatingParams) error {
-	_, err := q.db.ExecContext(ctx, upsertFullGlickoRating,
-		arg.UserID,
-		arg.GameID,
-		arg.CurrentRating,
-		arg.GlickoRating,
-		arg.GlickoDeviation,
-	)
 	return err
 }

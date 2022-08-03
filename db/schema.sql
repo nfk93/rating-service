@@ -2,12 +2,12 @@ CREATE TYPE rating_system_enum AS ENUM ('glicko', 'elo');
 
 CREATE TABLE users (
   id   uuid NOT NULL PRIMARY KEY,
-  name string NOT NULL
+  name text NOT NULL
 );
 
 CREATE TABLE games (
   id uuid NOT NULL PRIMARY KEY,
-  name string NOT NULL,
+  name text NOT NULL,
   rating_system rating_system_enum
 );
 

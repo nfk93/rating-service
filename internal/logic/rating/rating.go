@@ -15,6 +15,13 @@ type RatingService struct {
 	db      *sql.DB
 }
 
+func NewRatingService(q *database.Queries, db *sql.DB) *RatingService {
+	return &RatingService{
+		queries: q,
+		db:      db,
+	}
+}
+
 // TODO: support different rating systems
 // Updates players' rating based on the results of the given match
 func (s *RatingService) UpdateRatings(ctx context.Context, matchID uuid.UUID) error {

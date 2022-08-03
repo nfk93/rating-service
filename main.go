@@ -16,7 +16,6 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/nfk93/rating-service/db"
 	"github.com/nfk93/rating-service/generated/api"
 	"github.com/nfk93/rating-service/generated/database"
 	"github.com/nfk93/rating-service/internal/endpoints"
@@ -50,9 +49,7 @@ func main() {
 	}
 
 	queries := database.New(sqldb)
-	repo := db.NewRepo(queries, sqldb)
-
-	userService := user.NewUserService(repo)
+	userService := user.NewUserService(queries)
 
 	DefaultApiService := endpoints.NewApiService(userService)
 	DefaultApiController := api.NewDefaultApiController(DefaultApiService)

@@ -11,19 +11,20 @@ import (
 )
 
 type Repo struct {
-	queries *database.Queries
-	db      *sql.DB
+	db *sql.DB
+	q  *database.Queries
 }
 
-func NewRepo(queries *database.Queries, db *sql.DB) *Repo {
+func NewRepo(db *sql.DB) *Repo {
+	q := database.New(db)
 	return &Repo{
-		queries: queries,
-		db:      db,
+		db: db,
+		q:  q,
 	}
 }
 
 func (r *Repo) CreateUser(ctx context.Context, id uuid.UUID, name string) error {
-	_, err := r.queries.CreateUser(ctx, database.CreateUserParams{
+	_, err := r.q.CreateUser(ctx, database.CreateUserParams{
 		ID:   id,
 		Name: name,
 	})
@@ -31,11 +32,12 @@ func (r *Repo) CreateUser(ctx context.Context, id uuid.UUID, name string) error 
 }
 
 func (r *Repo) GetUsers(ctx context.Context) ([]database.User, error) {
-	return r.queries.ListUsers(ctx)
+	q := database.New(r.db)
+	return q.ListUsers(ctx)
 }
 
 func (r *Repo) CreateMatch(ctx context.Context, gameID uuid.UUID, timestamp time.Time) (database.Match, error) {
-	return r.queries.CreateMatch(ctx, database.CreateMatchParams{
+	return r.q.CreateMatch(ctx, database.CreateMatchParams{
 		GameID:     gameID,
 		HappenedAt: timestamp,
 	})
@@ -47,7 +49,7 @@ func (r *Repo) RegisterMatchResults(ctx context.Context, matchID uuid.UUID, play
 		return err
 	}
 	defer tx.Rollback()
-	transaction := r.queries.WithTx(tx)
+	transaction := r.q.WithTx(tx)
 
 	match, err := transaction.GetMatchForUpdate(ctx, matchID)
 	if err != nil {

@@ -15,6 +15,13 @@ type MatchService struct {
 	db      *sql.DB
 }
 
+func New(q *database.Queries, db *sql.DB) *MatchService {
+	return &MatchService{
+		q,
+		db,
+	}
+}
+
 func (s *MatchService) RegisterMatch(ctx context.Context, gameId uuid.UUID) (database.Match, error) {
 	return s.queries.CreateMatch(ctx, database.CreateMatchParams{
 		GameID:     gameId,

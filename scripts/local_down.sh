@@ -1,0 +1,3 @@
+docker kill postgres_rating_service
+docker container rm postgres_rating_service
+docker image remove pg_rating_service_test_image -f

@@ -4,26 +4,26 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"github.com/nfk93/rating-service/sqlc/db"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/nfk93/rating-service/generated/database"
 )
 
 type MatchService struct {
-	queries *database.Queries
+	queries *db.Queries
 	db      *sql.DB
 }
 
-func New(q *database.Queries, db *sql.DB) *MatchService {
+func New(q *db.Queries, db *sql.DB) *MatchService {
 	return &MatchService{
 		q,
 		db,
 	}
 }
 
-func (s *MatchService) RegisterMatch(ctx context.Context, gameId uuid.UUID) (database.Match, error) {
-	return s.queries.CreateMatch(ctx, database.CreateMatchParams{
+func (s *MatchService) RegisterMatch(ctx context.Context, gameId uuid.UUID) (db.Match, error) {
+	return s.queries.CreateMatch(ctx, db.CreateMatchParams{
 		GameID:     gameId,
 		HappenedAt: time.Now(),
 	})
@@ -50,7 +50,7 @@ func (s *MatchService) RegisterMatchResult(ctx context.Context, matchID uuid.UUI
 	}
 
 	for _, playerID := range playerIDs {
-		_, err := transaction.AddPlayerToMatch(ctx, database.AddPlayerToMatchParams{
+		_, err := transaction.AddPlayerToMatch(ctx, db.AddPlayerToMatchParams{
 			MatchID:  matchID,
 			UserID:   playerID,
 			IsWinner: playerID == winnerID,

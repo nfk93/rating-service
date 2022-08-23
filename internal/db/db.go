@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/nfk93/rating-service/generated/database"
 )
 
 type Repo struct {

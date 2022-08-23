@@ -17,3 +17,18 @@ func (s *IntegrationTestSuite) TestShit() {
 		s.T().Fatalf("error: %s", err.Error())
 	}
 }
+
+func (s *IntegrationTestSuite) TestEloMatch() {
+	s.Run(
+		SetupUser,
+		SetupGame,
+	)
+}
+
+type Behaviour func(t *testing.T, deps *TestDependencies)
+
+func (s *IntegrationTestSuite) Run(behaviours ...Behaviour) {
+	for _, b := range behaviours {
+		b(s.T(), s.TestDependencies)
+	}
+}

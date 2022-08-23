@@ -19,7 +19,7 @@ func SetupTestDB() *sql.DB {
 
 	sqldb, err := sql.Open("postgres", dbURI)
 	if err != nil {
-		panic(fmt.Sprintf("error opening db connection: %s", err))
+		panic(fmt.Sprintf("error opening sqlc connection: %s", err))
 	}
 
 	return sqldb

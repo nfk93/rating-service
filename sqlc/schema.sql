@@ -1,3 +1,5 @@
+-- noinspection SqlNoDataSourceInspectionForFile
+
 CREATE TYPE rating_system_enum AS ENUM ('glicko', 'elo');
 
 CREATE TABLE users (
@@ -8,7 +10,7 @@ CREATE TABLE users (
 CREATE TABLE games (
   id uuid NOT NULL PRIMARY KEY,
   name text NOT NULL,
-  rating_system rating_system_enum
+  rating_system rating_system_enum NOT NULL
 );
 
 CREATE TABLE elo_rating (

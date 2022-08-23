@@ -2,8 +2,9 @@ package tests
 
 import (
 	"database/sql"
+	"github.com/nfk93/rating-service/internal/logic/game"
+	"github.com/nfk93/rating-service/sqlc/db"
 
-	"github.com/nfk93/rating-service/generated/database"
 	"github.com/nfk93/rating-service/internal/logic/match"
 	"github.com/nfk93/rating-service/internal/logic/rating"
 	"github.com/nfk93/rating-service/internal/logic/user"
@@ -14,7 +15,8 @@ type TestDependencies struct {
 	MatchService  *match.MatchService
 	RatingService *rating.RatingService
 	UserService   *user.UserService
-	Queries       *database.Queries
+	GameService   *game.Service
+	Queries       *db.Queries
 	DB            *sql.DB
 
 	TestData TestData
@@ -28,10 +30,11 @@ type IntegrationTestSuite struct {
 
 func (s *IntegrationTestSuite) SetupTest() {
 	sqldb := SetupTestDB()
-	queries := database.New(sqldb)
+	queries := db.New(sqldb)
 	matchService := match.New(queries, sqldb)
 	ratingService := rating.NewRatingService(queries, sqldb)
 	userService := user.NewUserService(queries)
+	gameService := game.New(queries)
 
 	data := defaultData()
 
@@ -39,6 +42,7 @@ func (s *IntegrationTestSuite) SetupTest() {
 		MatchService:  matchService,
 		RatingService: ratingService,
 		UserService:   userService,
+		GameService:   gameService,
 		Queries:       queries,
 		DB:            sqldb,
 

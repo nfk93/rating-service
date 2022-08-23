@@ -1,3 +1,5 @@
+-- noinspection SqlNoDataSourceInspectionForFile
+
 -- ########################################
 -- # Users
 -- ########################################
@@ -13,7 +15,7 @@ SELECT * FROM users;
 INSERT INTO users (
   id, name
 ) VALUES (
-  sqlc.arg(id), sqlc.arg(name)
+  gen_random_uuid(), $1
 )
 RETURNING *;
 
@@ -27,9 +29,9 @@ WHERE id = sqlc.arg(id);
 
 -- name: CreateGame :one
 INSERT INTO games (
-  id, name
+    id, name, rating_system
 ) VALUES (
-  sqlc.arg(id), sqlc.arg(name)
+    gen_random_uuid(), $1, $2
 )
 RETURNING *;
 

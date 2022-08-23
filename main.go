@@ -12,12 +12,12 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"github.com/nfk93/rating-service/sqlc/db"
 	"log"
 	"net/http"
 	"os"
 
 	"github.com/nfk93/rating-service/generated/api"
-	"github.com/nfk93/rating-service/generated/database"
 	"github.com/nfk93/rating-service/internal/endpoints"
 	"github.com/nfk93/rating-service/internal/logic/user"
 
@@ -34,8 +34,8 @@ func main() {
 	}
 
 	var (
-		dbUser         = mustGetenv("DB_USER")              // e.g. 'my-db-user'
-		dbPwd          = mustGetenv("DB_PASS")              // e.g. 'my-db-password'
+		dbUser         = mustGetenv("DB_USER")              // e.g. 'my-sqlc-user'
+		dbPwd          = mustGetenv("DB_PASS")              // e.g. 'my-sqlc-password'
 		unixSocketPath = mustGetenv("INSTANCE_UNIX_SOCKET") // e.g. '/cloudsql/project:region:instance'
 		dbName         = mustGetenv("DB_NAME")              // e.g. 'my-database'
 	)
@@ -45,10 +45,10 @@ func main() {
 
 	sqldb, err := sql.Open("postgres", dbURI)
 	if err != nil {
-		panic(fmt.Sprintf("error opening db connection: %s", err))
+		panic(fmt.Sprintf("error opening sqlc connection: %s", err))
 	}
 
-	queries := database.New(sqldb)
+	queries := db.New(sqldb)
 	userService := user.NewUserService(queries)
 
 	DefaultApiService := endpoints.NewApiService(userService)

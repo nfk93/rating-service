@@ -2,42 +2,32 @@ package user
 
 import (
 	"context"
-	"log"
-
 	"github.com/google/uuid"
-	"github.com/nfk93/rating-service/generated/database"
+	"github.com/nfk93/rating-service/sqlc/db"
+	"log"
 )
 
 type UserService struct {
-	q *database.Queries
+	q *db.Queries
 }
 
-func NewUserService(q *database.Queries) *UserService {
+func NewUserService(q *db.Queries) *UserService {
 	return &UserService{
 		q: q,
 	}
 }
 
-func (s *UserService) CreateUser(ctx context.Context, name string) (string, error) {
-	id, err := uuid.NewUUID()
+func (s *UserService) CreateUser(ctx context.Context, name string) (uuid.UUID, error) {
+	user, err := s.q.CreateUser(ctx, name)
 	if err != nil {
 		log.Printf("error: %s", err.Error())
-		return "", err
+		return uuid.Nil, err
 	}
 
-	_, err = s.q.CreateUser(ctx, database.CreateUserParams{
-		ID:   id,
-		Name: name,
-	})
-	if err != nil {
-		log.Printf("error: %s", err.Error())
-		return "", err
-	}
-
-	return id.String(), nil
+	return user.ID, nil
 }
 
-func (s *UserService) GetUsers(ctx context.Context) ([]database.User, error) {
+func (s *UserService) GetUsers(ctx context.Context) ([]db.User, error) {
 	users, err := s.q.ListUsers(ctx)
 	if err != nil {
 		log.Printf("error: %s", err.Error())

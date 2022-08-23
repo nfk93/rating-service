@@ -4,18 +4,18 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"github.com/nfk93/rating-service/sqlc/db"
 
 	"github.com/google/uuid"
-	"github.com/nfk93/rating-service/generated/database"
 	"github.com/nfk93/rating-service/internal/logic/rating/rating_system"
 )
 
 type RatingService struct {
-	queries *database.Queries
+	queries *db.Queries
 	db      *sql.DB
 }
 
-func NewRatingService(q *database.Queries, db *sql.DB) *RatingService {
+func NewRatingService(q *db.Queries, db *sql.DB) *RatingService {
 	return &RatingService{
 		queries: q,
 		db:      db,
@@ -72,7 +72,7 @@ func (s *RatingService) UpdateRatings(ctx context.Context, matchID uuid.UUID) er
 	}
 
 	for i := 0; i < len(matchPlayers); i++ {
-		args := database.ApplyRatingDiffParams{
+		args := db.ApplyRatingDiffParams{
 			UserID:     matchPlayers[i].UserID,
 			GameID:     match.GameID,
 			Ratingdiff: int32(ratingDiffs[i]),

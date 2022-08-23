@@ -97,26 +97,31 @@ RETURNING *;
 
 -- name: AddPlayerToMatch :one
 INSERT INTO match_player (
-  match_id, user_id, current_rating, is_winner, score
+  match_id, user_id
 ) VALUES (
-  $1, $2, $3, $4, $5
+  $1, $2
 )
 RETURNING *;
 
 -- name: GetMatchForUpdate :one
 SELECT * FROM matches WHERE id = $1 FOR UPDATE;
 
--- name: SetMatchFinished :exec
-UPDATE matches SET is_finished = true WHERE id = $1;
+-- name: GetMatchPlayers :many
+SELECT * FROM match_player WHERE match_id = $1;
 
--- name: SetMatchRatingsUpdated :exec
-UPDATE matches SET ratings_updated = true WHERE id = $1;
+-- name: SetMatchFinished :exec
+UPDATE matches SET finished = true WHERE id = $1;
 
 -- name: GetMatchResult :many
 SELECT * FROM match_player WHERE match_id = $1;
 
+-- name: UpdateMatchPlayer :exec
+UPDATE match_player
+SET rating = $3, score = $4
+WHERE match_id = $1 AND user_id = $2;
+
 -- name: GetEloMatchResult :many
-SELECT B.user_id, B.is_winner, B.score, C.rating, A.happened_at
+SELECT B.user_id, B.score, C.rating, A.happened_at
 FROM ((
   (SELECT id, happened_at FROM matches WHERE id = $1) as A
   INNER JOIN match_player as B ON A.id = B.match_id)

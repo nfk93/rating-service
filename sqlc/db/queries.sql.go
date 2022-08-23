@@ -16,35 +16,25 @@ import (
 
 const addPlayerToMatch = `-- name: AddPlayerToMatch :one
 INSERT INTO match_player (
-  match_id, user_id, current_rating, is_winner, score
+  match_id, user_id
 ) VALUES (
-  $1, $2, $3, $4, $5
+  $1, $2
 )
-RETURNING match_id, user_id, current_rating, is_winner, score
+RETURNING match_id, user_id, rating, score
 `
 
 type AddPlayerToMatchParams struct {
-	MatchID       uuid.UUID
-	UserID        uuid.UUID
-	CurrentRating int32
-	IsWinner      bool
-	Score         sql.NullInt32
+	MatchID uuid.UUID
+	UserID  uuid.UUID
 }
 
 func (q *Queries) AddPlayerToMatch(ctx context.Context, arg AddPlayerToMatchParams) (MatchPlayer, error) {
-	row := q.db.QueryRowContext(ctx, addPlayerToMatch,
-		arg.MatchID,
-		arg.UserID,
-		arg.CurrentRating,
-		arg.IsWinner,
-		arg.Score,
-	)
+	row := q.db.QueryRowContext(ctx, addPlayerToMatch, arg.MatchID, arg.UserID)
 	var i MatchPlayer
 	err := row.Scan(
 		&i.MatchID,
 		&i.UserID,
-		&i.CurrentRating,
-		&i.IsWinner,
+		&i.Rating,
 		&i.Score,
 	)
 	return i, err
@@ -99,7 +89,7 @@ INSERT INTO matches (
 ) VALUES (
   gen_random_uuid(), $1, $2
 )
-RETURNING id, game_id, ratings_updated, is_finished, happened_at
+RETURNING id, game_id, finished, happened_at
 `
 
 type CreateMatchParams struct {
@@ -116,8 +106,7 @@ func (q *Queries) CreateMatch(ctx context.Context, arg CreateMatchParams) (Match
 	err := row.Scan(
 		&i.ID,
 		&i.GameID,
-		&i.RatingsUpdated,
-		&i.IsFinished,
+		&i.Finished,
 		&i.HappenedAt,
 	)
 	return i, err
@@ -160,7 +149,7 @@ func (q *Queries) DeleteUser(ctx context.Context, id uuid.UUID) error {
 }
 
 const getEloMatchResult = `-- name: GetEloMatchResult :many
-SELECT B.user_id, B.is_winner, B.score, C.rating, A.happened_at
+SELECT B.user_id, B.score, C.rating, A.happened_at
 FROM ((
   (SELECT id, happened_at FROM matches WHERE id = $1) as A
   INNER JOIN match_player as B ON A.id = B.match_id)
@@ -170,7 +159,6 @@ FROM ((
 
 type GetEloMatchResultRow struct {
 	UserID     uuid.UUID
-	IsWinner   bool
 	Score      sql.NullInt32
 	Rating     int32
 	HappenedAt time.Time
@@ -187,7 +175,6 @@ func (q *Queries) GetEloMatchResult(ctx context.Context, id uuid.UUID) ([]GetElo
 		var i GetEloMatchResultRow
 		if err := rows.Scan(
 			&i.UserID,
-			&i.IsWinner,
 			&i.Score,
 			&i.Rating,
 			&i.HappenedAt,
@@ -320,7 +307,7 @@ func (q *Queries) GetEloRatingsForUpdate(ctx context.Context, arg GetEloRatingsF
 }
 
 const getMatchForUpdate = `-- name: GetMatchForUpdate :one
-SELECT id, game_id, ratings_updated, is_finished, happened_at FROM matches WHERE id = $1 FOR UPDATE
+SELECT id, game_id, finished, happened_at FROM matches WHERE id = $1 FOR UPDATE
 `
 
 func (q *Queries) GetMatchForUpdate(ctx context.Context, id uuid.UUID) (Match, error) {
@@ -329,15 +316,46 @@ func (q *Queries) GetMatchForUpdate(ctx context.Context, id uuid.UUID) (Match, e
 	err := row.Scan(
 		&i.ID,
 		&i.GameID,
-		&i.RatingsUpdated,
-		&i.IsFinished,
+		&i.Finished,
 		&i.HappenedAt,
 	)
 	return i, err
 }
 
+const getMatchPlayers = `-- name: GetMatchPlayers :many
+SELECT match_id, user_id, rating, score FROM match_player WHERE match_id = $1
+`
+
+func (q *Queries) GetMatchPlayers(ctx context.Context, matchID uuid.UUID) ([]MatchPlayer, error) {
+	rows, err := q.db.QueryContext(ctx, getMatchPlayers, matchID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []MatchPlayer
+	for rows.Next() {
+		var i MatchPlayer
+		if err := rows.Scan(
+			&i.MatchID,
+			&i.UserID,
+			&i.Rating,
+			&i.Score,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getMatchResult = `-- name: GetMatchResult :many
-SELECT match_id, user_id, current_rating, is_winner, score FROM match_player WHERE match_id = $1
+SELECT match_id, user_id, rating, score FROM match_player WHERE match_id = $1
 `
 
 func (q *Queries) GetMatchResult(ctx context.Context, matchID uuid.UUID) ([]MatchPlayer, error) {
@@ -352,8 +370,7 @@ func (q *Queries) GetMatchResult(ctx context.Context, matchID uuid.UUID) ([]Matc
 		if err := rows.Scan(
 			&i.MatchID,
 			&i.UserID,
-			&i.CurrentRating,
-			&i.IsWinner,
+			&i.Rating,
 			&i.Score,
 		); err != nil {
 			return nil, err
@@ -453,7 +470,7 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 }
 
 const setMatchFinished = `-- name: SetMatchFinished :exec
-UPDATE matches SET is_finished = true WHERE id = $1
+UPDATE matches SET finished = true WHERE id = $1
 `
 
 func (q *Queries) SetMatchFinished(ctx context.Context, id uuid.UUID) error {
@@ -461,12 +478,26 @@ func (q *Queries) SetMatchFinished(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
-const setMatchRatingsUpdated = `-- name: SetMatchRatingsUpdated :exec
-UPDATE matches SET ratings_updated = true WHERE id = $1
+const updateMatchPlayer = `-- name: UpdateMatchPlayer :exec
+UPDATE match_player
+SET rating = $3, score = $4
+WHERE match_id = $1 AND user_id = $2
 `
 
-func (q *Queries) SetMatchRatingsUpdated(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, setMatchRatingsUpdated, id)
+type UpdateMatchPlayerParams struct {
+	MatchID uuid.UUID
+	UserID  uuid.UUID
+	Rating  sql.NullInt32
+	Score   sql.NullInt32
+}
+
+func (q *Queries) UpdateMatchPlayer(ctx context.Context, arg UpdateMatchPlayerParams) error {
+	_, err := q.db.ExecContext(ctx, updateMatchPlayer,
+		arg.MatchID,
+		arg.UserID,
+		arg.Rating,
+		arg.Score,
+	)
 	return err
 }
 

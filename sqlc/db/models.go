@@ -68,19 +68,17 @@ type Game struct {
 }
 
 type Match struct {
-	ID             uuid.UUID
-	GameID         uuid.UUID
-	RatingsUpdated bool
-	IsFinished     bool
-	HappenedAt     time.Time
+	ID         uuid.UUID
+	GameID     uuid.UUID
+	Finished   bool
+	HappenedAt time.Time
 }
 
 type MatchPlayer struct {
-	MatchID       uuid.UUID
-	UserID        uuid.UUID
-	CurrentRating int32
-	IsWinner      bool
-	Score         sql.NullInt32
+	MatchID uuid.UUID
+	UserID  uuid.UUID
+	Rating  sql.NullInt32
+	Score   sql.NullInt32
 }
 
 type User struct {

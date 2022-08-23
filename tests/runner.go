@@ -12,8 +12,8 @@ import (
 )
 
 type TestDependencies struct {
-	MatchService  *match.MatchService
-	RatingService *rating.RatingService
+	MatchService  *match.Service
+	RatingService *rating.Service
 	UserService   *user.UserService
 	GameService   *game.Service
 	Queries       *db.Queries

@@ -10,21 +10,21 @@ import (
 	"github.com/nfk93/rating-service/internal/logic/rating/rating_system"
 )
 
-type RatingService struct {
+type Service struct {
 	queries *db.Queries
 	db      *sql.DB
 }
 
-func NewRatingService(q *db.Queries, db *sql.DB) *RatingService {
-	return &RatingService{
+func NewRatingService(q *db.Queries, db *sql.DB) *Service {
+	return &Service{
 		queries: q,
 		db:      db,
 	}
 }
 
+// UpdateRatings updates players' rating based on the results of the given match
 // TODO: support different rating systems
-// Updates players' rating based on the results of the given match
-func (s *RatingService) UpdateRatings(ctx context.Context, matchID uuid.UUID) error {
+func (s *Service) UpdateRatings(ctx context.Context, matchID uuid.UUID) error {
 	tx, err := s.db.Begin()
 	if err != nil {
 		return err

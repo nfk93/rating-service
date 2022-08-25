@@ -55,12 +55,6 @@ func (ns NullRatingSystemEnum) Value() (driver.Value, error) {
 	return ns.RatingSystemEnum, nil
 }
 
-type EloRating struct {
-	UserID uuid.UUID
-	GameID uuid.UUID
-	Rating int32
-}
-
 type Game struct {
 	ID           uuid.UUID
 	Name         string
@@ -68,17 +62,25 @@ type Game struct {
 }
 
 type Match struct {
-	ID         uuid.UUID
-	GameID     uuid.UUID
-	Finished   bool
-	HappenedAt time.Time
+	ID             uuid.UUID
+	GameID         uuid.UUID
+	Finished       bool
+	RatingsUpdated bool
+	HappenedAt     time.Time
 }
 
 type MatchPlayer struct {
-	MatchID uuid.UUID
-	UserID  uuid.UUID
-	Rating  sql.NullInt32
-	Score   sql.NullInt32
+	MatchID      uuid.UUID
+	UserID       uuid.UUID
+	Score        sql.NullInt32
+	RatingBefore sql.NullInt32
+	RatingChange sql.NullInt32
+}
+
+type Rating struct {
+	UserID uuid.UUID
+	GameID uuid.UUID
+	Rating int32
 }
 
 type User struct {

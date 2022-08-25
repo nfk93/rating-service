@@ -20,7 +20,7 @@ INSERT INTO match_player (
 ) VALUES (
   $1, $2
 )
-RETURNING match_id, user_id, rating, score
+RETURNING match_id, user_id, score, rating_before, rating_change
 `
 
 type AddPlayerToMatchParams struct {
@@ -34,14 +34,15 @@ func (q *Queries) AddPlayerToMatch(ctx context.Context, arg AddPlayerToMatchPara
 	err := row.Scan(
 		&i.MatchID,
 		&i.UserID,
-		&i.Rating,
 		&i.Score,
+		&i.RatingBefore,
+		&i.RatingChange,
 	)
 	return i, err
 }
 
 const applyRatingDiff = `-- name: ApplyRatingDiff :exec
-UPDATE elo_rating 
+UPDATE rating
 SET rating = rating + $3
 WHERE user_id = $1 AND game_id = $2
 `
@@ -89,7 +90,7 @@ INSERT INTO matches (
 ) VALUES (
   gen_random_uuid(), $1, $2
 )
-RETURNING id, game_id, finished, happened_at
+RETURNING id, game_id, finished, ratings_updated, happened_at
 `
 
 type CreateMatchParams struct {
@@ -107,6 +108,7 @@ func (q *Queries) CreateMatch(ctx context.Context, arg CreateMatchParams) (Match
 		&i.ID,
 		&i.GameID,
 		&i.Finished,
+		&i.RatingsUpdated,
 		&i.HappenedAt,
 	)
 	return i, err
@@ -148,166 +150,19 @@ func (q *Queries) DeleteUser(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
-const getEloMatchResult = `-- name: GetEloMatchResult :many
-SELECT B.user_id, B.score, C.rating, A.happened_at
-FROM ((
-  (SELECT id, happened_at FROM matches WHERE id = $1) as A
-  INNER JOIN match_player as B ON A.id = B.match_id)
-  INNER JOIN elo_rating as C ON B.user_id = C.user_id
-)
+const getGame = `-- name: GetGame :one
+SELECT id, name, rating_system FROM games WHERE id = $1
 `
 
-type GetEloMatchResultRow struct {
-	UserID     uuid.UUID
-	Score      sql.NullInt32
-	Rating     int32
-	HappenedAt time.Time
-}
-
-func (q *Queries) GetEloMatchResult(ctx context.Context, id uuid.UUID) ([]GetEloMatchResultRow, error) {
-	rows, err := q.db.QueryContext(ctx, getEloMatchResult, id)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []GetEloMatchResultRow
-	for rows.Next() {
-		var i GetEloMatchResultRow
-		if err := rows.Scan(
-			&i.UserID,
-			&i.Score,
-			&i.Rating,
-			&i.HappenedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const getEloRating = `-- name: GetEloRating :one
-
-SELECT rating FROM elo_rating
-WHERE 
-  user_id = $1 AND 
-  game_id = $2
-`
-
-type GetEloRatingParams struct {
-	Userid uuid.UUID
-	Gameid uuid.UUID
-}
-
-// ########################################
-// # ELO
-// ########################################
-func (q *Queries) GetEloRating(ctx context.Context, arg GetEloRatingParams) (int32, error) {
-	row := q.db.QueryRowContext(ctx, getEloRating, arg.Userid, arg.Gameid)
-	var rating int32
-	err := row.Scan(&rating)
-	return rating, err
-}
-
-const getEloRatingForUpdate = `-- name: GetEloRatingForUpdate :one
-SELECT rating FROM elo_rating
-WHERE 
-  user_id = $1 AND 
-  game_id = $2
-FOR UPDATE
-`
-
-type GetEloRatingForUpdateParams struct {
-	Userid uuid.UUID
-	Gameid uuid.UUID
-}
-
-func (q *Queries) GetEloRatingForUpdate(ctx context.Context, arg GetEloRatingForUpdateParams) (int32, error) {
-	row := q.db.QueryRowContext(ctx, getEloRatingForUpdate, arg.Userid, arg.Gameid)
-	var rating int32
-	err := row.Scan(&rating)
-	return rating, err
-}
-
-const getEloRatings = `-- name: GetEloRatings :many
-SELECT rating FROM elo_rating
-WHERE 
-  user_id = ANY($2::int[]) AND
-  game_id = $1
-`
-
-type GetEloRatingsParams struct {
-	GameID  uuid.UUID
-	Column2 []int32
-}
-
-func (q *Queries) GetEloRatings(ctx context.Context, arg GetEloRatingsParams) ([]int32, error) {
-	rows, err := q.db.QueryContext(ctx, getEloRatings, arg.GameID, pq.Array(arg.Column2))
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []int32
-	for rows.Next() {
-		var rating int32
-		if err := rows.Scan(&rating); err != nil {
-			return nil, err
-		}
-		items = append(items, rating)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const getEloRatingsForUpdate = `-- name: GetEloRatingsForUpdate :many
-SELECT rating FROM elo_rating
-WHERE 
-  user_id = ANY($2::int[]) AND
-  game_id = $1
-FOR UPDATE
-`
-
-type GetEloRatingsForUpdateParams struct {
-	GameID  uuid.UUID
-	Column2 []int32
-}
-
-func (q *Queries) GetEloRatingsForUpdate(ctx context.Context, arg GetEloRatingsForUpdateParams) ([]int32, error) {
-	rows, err := q.db.QueryContext(ctx, getEloRatingsForUpdate, arg.GameID, pq.Array(arg.Column2))
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []int32
-	for rows.Next() {
-		var rating int32
-		if err := rows.Scan(&rating); err != nil {
-			return nil, err
-		}
-		items = append(items, rating)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
+func (q *Queries) GetGame(ctx context.Context, id uuid.UUID) (Game, error) {
+	row := q.db.QueryRowContext(ctx, getGame, id)
+	var i Game
+	err := row.Scan(&i.ID, &i.Name, &i.RatingSystem)
+	return i, err
 }
 
 const getMatchForUpdate = `-- name: GetMatchForUpdate :one
-SELECT id, game_id, finished, happened_at FROM matches WHERE id = $1 FOR UPDATE
+SELECT id, game_id, finished, ratings_updated, happened_at FROM matches WHERE id = $1 FOR UPDATE
 `
 
 func (q *Queries) GetMatchForUpdate(ctx context.Context, id uuid.UUID) (Match, error) {
@@ -317,13 +172,14 @@ func (q *Queries) GetMatchForUpdate(ctx context.Context, id uuid.UUID) (Match, e
 		&i.ID,
 		&i.GameID,
 		&i.Finished,
+		&i.RatingsUpdated,
 		&i.HappenedAt,
 	)
 	return i, err
 }
 
 const getMatchPlayers = `-- name: GetMatchPlayers :many
-SELECT match_id, user_id, rating, score FROM match_player WHERE match_id = $1
+SELECT match_id, user_id, score, rating_before, rating_change FROM match_player WHERE match_id = $1
 `
 
 func (q *Queries) GetMatchPlayers(ctx context.Context, matchID uuid.UUID) ([]MatchPlayer, error) {
@@ -338,8 +194,9 @@ func (q *Queries) GetMatchPlayers(ctx context.Context, matchID uuid.UUID) ([]Mat
 		if err := rows.Scan(
 			&i.MatchID,
 			&i.UserID,
-			&i.Rating,
 			&i.Score,
+			&i.RatingBefore,
+			&i.RatingChange,
 		); err != nil {
 			return nil, err
 		}
@@ -355,7 +212,7 @@ func (q *Queries) GetMatchPlayers(ctx context.Context, matchID uuid.UUID) ([]Mat
 }
 
 const getMatchResult = `-- name: GetMatchResult :many
-SELECT match_id, user_id, rating, score FROM match_player WHERE match_id = $1
+SELECT match_id, user_id, score, rating_before, rating_change FROM match_player WHERE match_id = $1
 `
 
 func (q *Queries) GetMatchResult(ctx context.Context, matchID uuid.UUID) ([]MatchPlayer, error) {
@@ -370,8 +227,9 @@ func (q *Queries) GetMatchResult(ctx context.Context, matchID uuid.UUID) ([]Matc
 		if err := rows.Scan(
 			&i.MatchID,
 			&i.UserID,
-			&i.Rating,
 			&i.Score,
+			&i.RatingBefore,
+			&i.RatingChange,
 		); err != nil {
 			return nil, err
 		}
@@ -414,6 +272,125 @@ func (q *Queries) GetMatches(ctx context.Context, arg GetMatchesParams) ([]uuid.
 			return nil, err
 		}
 		items = append(items, id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getRating = `-- name: GetRating :one
+
+SELECT rating FROM rating
+WHERE 
+  user_id = $1 AND 
+  game_id = $2
+`
+
+type GetRatingParams struct {
+	Userid uuid.UUID
+	Gameid uuid.UUID
+}
+
+// ########################################
+// # ELO
+// ########################################
+func (q *Queries) GetRating(ctx context.Context, arg GetRatingParams) (int32, error) {
+	row := q.db.QueryRowContext(ctx, getRating, arg.Userid, arg.Gameid)
+	var rating int32
+	err := row.Scan(&rating)
+	return rating, err
+}
+
+const getRatingForUpdate = `-- name: GetRatingForUpdate :one
+SELECT rating FROM rating
+WHERE 
+  user_id = $1 AND 
+  game_id = $2
+FOR UPDATE
+`
+
+type GetRatingForUpdateParams struct {
+	Userid uuid.UUID
+	Gameid uuid.UUID
+}
+
+func (q *Queries) GetRatingForUpdate(ctx context.Context, arg GetRatingForUpdateParams) (int32, error) {
+	row := q.db.QueryRowContext(ctx, getRatingForUpdate, arg.Userid, arg.Gameid)
+	var rating int32
+	err := row.Scan(&rating)
+	return rating, err
+}
+
+const getRatings = `-- name: GetRatings :many
+SELECT rating FROM rating
+WHERE 
+  user_id = ANY($2::int[]) AND
+  game_id = $1
+`
+
+type GetRatingsParams struct {
+	GameID  uuid.UUID
+	Column2 []int32
+}
+
+func (q *Queries) GetRatings(ctx context.Context, arg GetRatingsParams) ([]int32, error) {
+	rows, err := q.db.QueryContext(ctx, getRatings, arg.GameID, pq.Array(arg.Column2))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []int32
+	for rows.Next() {
+		var rating int32
+		if err := rows.Scan(&rating); err != nil {
+			return nil, err
+		}
+		items = append(items, rating)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getRatingsForUpdate = `-- name: GetRatingsForUpdate :many
+SELECT user_id, rating FROM rating
+WHERE 
+  user_id = ANY($2::uuid[]) AND
+  game_id = $1
+FOR UPDATE
+`
+
+type GetRatingsForUpdateParams struct {
+	GameID  uuid.UUID
+	Column2 []uuid.UUID
+}
+
+type GetRatingsForUpdateRow struct {
+	UserID uuid.UUID
+	Rating int32
+}
+
+func (q *Queries) GetRatingsForUpdate(ctx context.Context, arg GetRatingsForUpdateParams) ([]GetRatingsForUpdateRow, error) {
+	rows, err := q.db.QueryContext(ctx, getRatingsForUpdate, arg.GameID, pq.Array(arg.Column2))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetRatingsForUpdateRow
+	for rows.Next() {
+		var i GetRatingsForUpdateRow
+		if err := rows.Scan(&i.UserID, &i.Rating); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -478,36 +455,47 @@ func (q *Queries) SetMatchFinished(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
+const setMatchRatingsUpdated = `-- name: SetMatchRatingsUpdated :exec
+UPDATE matches SET ratings_updated = true WHERE id = $1
+`
+
+func (q *Queries) SetMatchRatingsUpdated(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, setMatchRatingsUpdated, id)
+	return err
+}
+
 const updateMatchPlayer = `-- name: UpdateMatchPlayer :exec
 UPDATE match_player
-SET rating = $3, score = $4
+SET score = $3, rating_before = $4, rating_change = $5
 WHERE match_id = $1 AND user_id = $2
 `
 
 type UpdateMatchPlayerParams struct {
-	MatchID uuid.UUID
-	UserID  uuid.UUID
-	Rating  sql.NullInt32
-	Score   sql.NullInt32
+	MatchID      uuid.UUID
+	UserID       uuid.UUID
+	Score        sql.NullInt32
+	RatingBefore sql.NullInt32
+	RatingChange sql.NullInt32
 }
 
 func (q *Queries) UpdateMatchPlayer(ctx context.Context, arg UpdateMatchPlayerParams) error {
 	_, err := q.db.ExecContext(ctx, updateMatchPlayer,
 		arg.MatchID,
 		arg.UserID,
-		arg.Rating,
 		arg.Score,
+		arg.RatingBefore,
+		arg.RatingChange,
 	)
 	return err
 }
 
 const upsertEloRating = `-- name: UpsertEloRating :exec
-INSERT INTO elo_rating (
+INSERT INTO rating (
   user_id, game_id, rating
 ) VALUES (
   $1, $2, $3
 )
-ON CONFLICT DO 
+ON CONFLICT ON CONSTRAINT rating_pkey DO
 UPDATE SET rating = $3
 `
 

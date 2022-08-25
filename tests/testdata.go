@@ -8,21 +8,20 @@ import (
 )
 
 type TestData struct {
-	users map[string]db.User
+	users []db.User
 	game  db.Game
 
-	matchID uuid.UUID
+	winnerIdx int
+	match     *db.Match
 }
 
-func defaultData() TestData {
-	users := defaultUsers(4)
+func defaultData(nUsers int) TestData {
+	users := defaultUsers(nUsers)
 	game := defaultGame()
 
 	return TestData{
 		users: users,
 		game:  game,
-
-		matchID: uuid.New(),
 	}
 }
 
@@ -35,16 +34,22 @@ func defaultGame() db.Game {
 	}
 }
 
-func defaultUsers(nUsers int) map[string]db.User {
-	users := make(map[string]db.User)
+func defaultUsers(nUsers int) []db.User {
+	users := make([]db.User, nUsers)
 	for i := 0; i < nUsers; i++ {
-		name := randStr(50)
-		users[name] = db.User{
-			ID:   uuid.New(),
-			Name: name,
-		}
+		defaultUser := defaultUser()
+		users[i] = defaultUser
 	}
 	return users
+}
+
+func defaultUser() db.User {
+	name := randStr(50)
+	defaultUser := db.User{
+		ID:   uuid.New(),
+		Name: name,
+	}
+	return defaultUser
 }
 
 func randStr(n int) string {

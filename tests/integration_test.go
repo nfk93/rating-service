@@ -19,16 +19,23 @@ func (s *IntegrationTestSuite) TestShit() {
 }
 
 func (s *IntegrationTestSuite) TestEloMatch() {
-	s.Run(
-		SetupUser,
-		SetupGame,
-	)
-}
+	s.TestData = defaultData(2)
 
-type Behaviour func(t *testing.T, deps *TestDependencies)
-
-func (s *IntegrationTestSuite) Run(behaviours ...Behaviour) {
-	for _, b := range behaviours {
-		b(s.T(), s.TestDependencies)
-	}
+	s.SetupUsers()
+	s.SetupGame()
+	s.CreateMatch()
+	s.JoinMatch()
+	s.FinishMatch(1)
+	s.UpdateRatings()
+	s.AssertRatings([]int{980, 1020})
+	s.CreateMatch()
+	s.JoinMatch()
+	s.FinishMatch(-1)
+	s.UpdateRatings()
+	s.AssertRatings([]int{982, 1018})
+	s.CreateMatch()
+	s.JoinMatch()
+	s.FinishMatch(0)
+	s.UpdateRatings()
+	s.AssertRatings([]int{1004, 996})
 }

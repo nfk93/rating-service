@@ -39,47 +39,50 @@ RETURNING *;
 DELETE FROM games
 WHERE id = sqlc.arg(id);
 
+-- name: GetGame :one
+SELECT * FROM games WHERE id = $1;
+
 -- ########################################
 -- # ELO
 -- ########################################
 
--- name: GetEloRating :one
-SELECT rating FROM elo_rating
+-- name: GetRating :one
+SELECT rating FROM rating
 WHERE 
   user_id = sqlc.arg(userId) AND 
   game_id = sqlc.arg(gameId);
 
--- name: GetEloRatingForUpdate :one
-SELECT rating FROM elo_rating
+-- name: GetRatingForUpdate :one
+SELECT rating FROM rating
 WHERE 
   user_id = sqlc.arg(userId) AND 
   game_id = sqlc.arg(gameId)
 FOR UPDATE;
 
--- name: GetEloRatings :many
-SELECT rating FROM elo_rating
+-- name: GetRatings :many
+SELECT rating FROM rating
 WHERE 
   user_id = ANY($2::int[]) AND
   game_id = $1;
 
--- name: GetEloRatingsForUpdate :many
-SELECT rating FROM elo_rating
+-- name: GetRatingsForUpdate :many
+SELECT user_id, rating FROM rating
 WHERE 
-  user_id = ANY($2::int[]) AND
+  user_id = ANY($2::uuid[]) AND
   game_id = $1
 FOR UPDATE;
 
 -- name: UpsertEloRating :exec
-INSERT INTO elo_rating (
+INSERT INTO rating (
   user_id, game_id, rating
 ) VALUES (
   $1, $2, $3
 )
-ON CONFLICT DO 
+ON CONFLICT ON CONSTRAINT rating_pkey DO
 UPDATE SET rating = $3;
 
 -- name: ApplyRatingDiff :exec
-UPDATE elo_rating 
+UPDATE rating
 SET rating = rating + sqlc.arg(ratingDiff)
 WHERE user_id = $1 AND game_id = $2;
 
@@ -112,21 +115,16 @@ SELECT * FROM match_player WHERE match_id = $1;
 -- name: SetMatchFinished :exec
 UPDATE matches SET finished = true WHERE id = $1;
 
+-- name: SetMatchRatingsUpdated :exec
+UPDATE matches SET ratings_updated = true WHERE id = $1;
+
 -- name: GetMatchResult :many
 SELECT * FROM match_player WHERE match_id = $1;
 
 -- name: UpdateMatchPlayer :exec
 UPDATE match_player
-SET rating = $3, score = $4
+SET score = $3, rating_before = $4, rating_change = $5
 WHERE match_id = $1 AND user_id = $2;
-
--- name: GetEloMatchResult :many
-SELECT B.user_id, B.score, C.rating, A.happened_at
-FROM ((
-  (SELECT id, happened_at FROM matches WHERE id = $1) as A
-  INNER JOIN match_player as B ON A.id = B.match_id)
-  INNER JOIN elo_rating as C ON B.user_id = C.user_id
-);
 
 -- name: GetMatches :many
 SELECT A.id 

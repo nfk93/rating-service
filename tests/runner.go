@@ -18,25 +18,22 @@ type TestDependencies struct {
 	GameService   *game.Service
 	Queries       *db.Queries
 	DB            *sql.DB
-
-	TestData TestData
 }
 
 type IntegrationTestSuite struct {
 	suite.Suite
 
 	TestDependencies *TestDependencies
+	TestData         TestData
 }
 
 func (s *IntegrationTestSuite) SetupTest() {
 	sqldb := SetupTestDB()
 	queries := db.New(sqldb)
-	matchService := match.New(queries, sqldb)
 	ratingService := rating.NewRatingService(queries, sqldb)
+	matchService := match.New(queries, sqldb, ratingService)
 	userService := user.NewUserService(queries)
 	gameService := game.New(queries)
-
-	data := defaultData()
 
 	s.TestDependencies = &TestDependencies{
 		MatchService:  matchService,
@@ -45,8 +42,6 @@ func (s *IntegrationTestSuite) SetupTest() {
 		GameService:   gameService,
 		Queries:       queries,
 		DB:            sqldb,
-
-		TestData: data,
 	}
 }
 

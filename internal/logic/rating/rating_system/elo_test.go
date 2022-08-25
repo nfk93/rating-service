@@ -9,7 +9,7 @@ import (
 )
 
 func TestCalculateUpdatedEloRatings(t *testing.T) {
-	r := eloRatingSystem{
+	r := EloRatingSystem{
 		t: 400,
 		k: 40,
 	}
@@ -77,10 +77,10 @@ func TestCalculateUpdatedEloRatings(t *testing.T) {
 
 				var newRatingA, newRatingB int
 				if tt.draw {
-					newRatingA, newRatingB = r.calculateUpdatedEloRatings(oldRatingA, oldRatingB, 0.5)
+					newRatingA, newRatingB = r.CalculateUpdatedEloRatings(oldRatingA, oldRatingB, 0.5)
 				} else {
-					newRatingA, newRatingB = r.calculateUpdatedEloRatings(oldRatingA, oldRatingB, 1.0)
-					newRatingB_, newRatingA_ := r.calculateUpdatedEloRatings(oldRatingB, oldRatingA, 0.0)
+					newRatingA, newRatingB = r.CalculateUpdatedEloRatings(oldRatingA, oldRatingB, 1.0)
+					newRatingB_, newRatingA_ := r.CalculateUpdatedEloRatings(oldRatingB, oldRatingA, 0.0)
 
 					assert.Equal(t, newRatingA, newRatingA_, "failed rating(a, b, r)_0 == rating(b, a, 1-r)_1 check")
 					assert.Equal(t, newRatingB, newRatingB_, "failed rating(a, b, r)_1 == rating(b, a, 1-r)_0 check")
